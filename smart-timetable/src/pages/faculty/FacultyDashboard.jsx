@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAuth } from "../../context/AuthContext";
 import { logoutUser } from "../../services/authService";
@@ -277,16 +277,12 @@ const FacultyDashboard = () => {
        TODAY
     ========================================================= */
 
-    const todayName = useMemo(() => {
-        const day =
-            new Date().getDay();
+    const jsDay = new Date().getDay();
 
-        if (day === 0) {
-            return "Sunday";
-        }
-
-        return DAY_ORDER[day - 1];
-    }, []);
+    const todayName =
+        jsDay === 0
+            ? "Sunday"
+            : DAY_ORDER[jsDay - 1];
 
     const todayClasses = facultyClasses
         .filter(
@@ -847,8 +843,8 @@ const FacultyDashboard = () => {
                                     setNotice("");
                                 }}
                                 className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${activeTab === value
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-white text-slate-600 hover:bg-slate-50"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-white text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 {label}
@@ -1482,12 +1478,12 @@ const FacultyDashboard = () => {
 
                                                         <span
                                                             className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${request.status ===
-                                                                    "approved"
-                                                                    ? "bg-emerald-100 text-emerald-700"
-                                                                    : request.status ===
-                                                                        "rejected"
-                                                                        ? "bg-red-100 text-red-700"
-                                                                        : "bg-amber-100 text-amber-700"
+                                                                "approved"
+                                                                ? "bg-emerald-100 text-emerald-700"
+                                                                : request.status ===
+                                                                    "rejected"
+                                                                    ? "bg-red-100 text-red-700"
+                                                                    : "bg-amber-100 text-amber-700"
                                                                 }`}
                                                         >
                                                             {
@@ -1546,8 +1542,8 @@ const FacultyDashboard = () => {
                                                 )
                                             }
                                             className={`rounded-xl border p-5 text-left transition ${available
-                                                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                                                    : "border-slate-200 bg-slate-50 text-slate-400"
+                                                ? "border-blue-500 bg-blue-50 text-blue-700"
+                                                : "border-slate-200 bg-slate-50 text-slate-400"
                                                 }`}
                                         >
 
