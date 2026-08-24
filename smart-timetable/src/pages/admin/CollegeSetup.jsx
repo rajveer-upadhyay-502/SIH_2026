@@ -60,6 +60,7 @@ const emptyRoom = {
 
 const emptyFaculty = {
     name: "",
+    email: "",
     employeeId: "",
     department: "",
     maxHoursPerDay: 6,
@@ -299,34 +300,35 @@ const CollegeSetup = () => {
         }
 
         try {
-            const newFaculty =
-                await addFaculty({
-                    name: facultyForm.name,
-                    employeeId:
-                        facultyForm.employeeId,
-                    department:
-                        facultyForm.department,
+                const newFaculty =
+                    await addFaculty({
+                        name: facultyForm.name,
+                        email: facultyForm.email.toLowerCase(),
+                        employeeId:
+                            facultyForm.employeeId,
+                        department:
+                            facultyForm.department,
 
-                    maxHoursPerDay:
-                        Number(
-                            facultyForm.maxHoursPerDay
-                        ),
+                        maxHoursPerDay:
+                            Number(
+                                facultyForm.maxHoursPerDay
+                            ),
 
-                    maxHoursPerWeek:
-                        Number(
-                            facultyForm.maxHoursPerWeek
-                        ),
+                        maxHoursPerWeek:
+                            Number(
+                                facultyForm.maxHoursPerWeek
+                            ),
 
-                    maxClassesPerDay:
-                        Number(
-                            facultyForm.maxClassesPerDay
-                        ),
+                        maxClassesPerDay:
+                            Number(
+                                facultyForm.maxClassesPerDay
+                            ),
 
-                    availability:
-                        facultyForm.availability,
+                        availability:
+                            facultyForm.availability,
 
-                    active: true,
-                });
+                        active: true,
+                    });
 
             setFaculty((previous) => [
                 ...previous,
@@ -1077,7 +1079,7 @@ const CollegeSetup = () => {
                             will use these as constraints.
                         </p>
 
-                        <div className="mt-8 grid gap-4 md:grid-cols-4">
+                        <div className="mt-8 grid gap-4 md:grid-cols-3">
 
                             <input
                                 value={facultyForm.name}
@@ -1088,6 +1090,19 @@ const CollegeSetup = () => {
                                     })
                                 }
                                 placeholder="Faculty name"
+                                className="rounded-lg border px-3 py-3"
+                            />
+
+                            <input
+                                value={facultyForm.email}
+                                onChange={(e) =>
+                                    setFacultyForm({
+                                        ...facultyForm,
+                                        email: e.target.value,
+                                    })
+                                }
+                                placeholder="Faculty Email"
+                                type="email"
                                 className="rounded-lg border px-3 py-3"
                             />
 
@@ -1232,6 +1247,10 @@ const CollegeSetup = () => {
                                         </th>
 
                                         <th className="px-4 py-3">
+                                            Email
+                                        </th>
+
+                                        <th className="px-4 py-3">
                                             ID
                                         </th>
 
@@ -1258,6 +1277,10 @@ const CollegeSetup = () => {
                                         >
                                             <td className="px-4 py-3 font-medium">
                                                 {item.name}
+                                            </td>
+
+                                            <td className="px-4 py-3">
+                                                {item.email}
                                             </td>
 
                                             <td className="px-4 py-3">

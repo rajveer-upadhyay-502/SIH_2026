@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || hasRole('admin') || hasRole('coordinator'));
+      
+      allow update: if isAuthenticated() && 
+                      request.auth.uid == userId && 
+                      request.resource.data.role == resource.data.role &&
+                      request.resource.data.employeeId == resource.data.employeeId;
+                      
+      allow write: if hasRole('admin');
+    }
+
+    match /collegeConfig/{doc} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('admin');
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('admin');
+    }
+
+    match /faculty/{facultyId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('admin') || hasRole('coordinator');
+      
+      allow update: if isAuthenticated() && 
+                      hasRole('faculty') && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.maxHoursPerWeek == resource.data.maxHoursPerWeek &&
+                      request.resource.data.maxHoursPerDay == resource.data.maxHoursPerDay &&
+                      request.resource.data.maxClassesPerDay == resource.data.maxClassesPerDay &&
+                      request.resource.data.department == resource.data.department &&
+                      request.resource.data.employeeId == resource.data.employeeId &&
+                      request.resource.data.active == resource.data.active;
+    }
+
+    match /timetables/{timetableId} {
+      allow read: if isAuthenticated() && 
+                     (hasRole('admin') || 
+                      hasRole('coordinator') || 
+                      (hasRole('faculty') && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.facultyId in resource.data.facultyIds) ||
+                      hasRole('student'));
+      
+      allow write: if hasRole('coordinator');
+    }
+    
+    match /leaveRequests/{requestId} {
+      allow read: if isAuthenticated() && (hasRole('admin') || hasRole('coordinator') || request.auth.uid == resource.data.facultyUserId);
+      allow create: if isAuthenticated() && hasRole('faculty') && request.auth.uid == request.resource.data.facultyUserId;
+      allow update: if isAuthenticated() && hasRole('coordinator');
+    }
+    
+    match /changeRequests/{requestId} {
+      allow read: if isAuthenticated() && (hasRole('admin') || hasRole('coordinator') || request.auth.uid == resource.data.facultyUserId);
+      allow create: if isAuthenticated() && hasRole('faculty') && request.auth.uid == request.resource.data.facultyUserId;
+      allow update: if isAuthenticated() && hasRole('coordinator');
+    }
+  }
+}

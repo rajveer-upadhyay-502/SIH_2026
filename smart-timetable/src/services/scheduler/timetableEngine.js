@@ -940,10 +940,12 @@ const buildCandidates = ({
     slots,
     slotMap,
     schedule,
+    existingSchedules,
     college,
     studentCount,
     batchId,
 }) => {
+    const globalSchedule = [...schedule, ...(existingSchedules || [])];
     const facultyMember =
         faculty.find(
             (member) =>
@@ -1010,7 +1012,7 @@ const buildCandidates = ({
                 facultyOverLimit({
                     faculty:
                         facultyMember,
-                    schedule,
+                    schedule: globalSchedule,
                     day:
                         startSlot.day,
                     duration,
@@ -1031,7 +1033,7 @@ const buildCandidates = ({
 
             if (
                 hasFacultyConflict({
-                    schedule,
+                    schedule: globalSchedule,
                     facultyId:
                         facultyMember.id,
                     candidateDay:
@@ -1049,7 +1051,7 @@ const buildCandidates = ({
 
             if (
                 hasBatchConflict({
-                    schedule,
+                    schedule: globalSchedule,
                     batchId,
                     candidateDay:
                         startSlot.day,
@@ -1078,7 +1080,7 @@ const buildCandidates = ({
                     .filter(
                         (room) =>
                             !hasRoomConflict({
-                                schedule,
+                                schedule: globalSchedule,
                                 roomId:
                                     room.id,
                                 candidateDay:
@@ -1496,6 +1498,7 @@ const generateSingleTimetable = ({
     slotMap,
     studentCount,
     batchId,
+    existingSchedules = [],
 }) => {
     const sessions =
         sortSessions(
@@ -1537,6 +1540,7 @@ const generateSingleTimetable = ({
                 slots,
                 slotMap,
                 schedule,
+                existingSchedules,
                 college,
                 studentCount,
                 batchId,
@@ -1700,6 +1704,7 @@ export const generateTimetable = ({
     subjects,
     studentCount,
     numberOfOptions = 3,
+    existingSchedules = [],
 }) => {
     if (!college) {
         throw new Error(
@@ -1823,6 +1828,7 @@ export const generateTimetable = ({
                     Number(studentCount),
                 batchId:
                     "current-batch",
+                existingSchedules,
             });
 
         if (!schedule) {

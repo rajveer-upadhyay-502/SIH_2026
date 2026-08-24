@@ -1,11 +1,11 @@
 import {
-    addDoc,
     collection,
     getDocs,
     query,
     serverTimestamp,
-    updateDoc,
     where,
+    writeBatch,
+    doc,
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
@@ -24,7 +24,10 @@ export const publishTimetable = async ({
         ),
     ];
 
+    const academicYear = college?.academicYear || "unknown";
+
     const courseKey = [
+        academicYear,
         course.program,
         course.semester,
         course.section,
@@ -48,8 +51,10 @@ export const publishTimetable = async ({
         existingQuery
     );
 
+    const batch = writeBatch(db);
+
     for (const timetableDoc of existingSnapshot.docs) {
-        await updateDoc(timetableDoc.ref, {
+        batch.update(timetableDoc.ref, {
             status: "archived",
             archivedAt: serverTimestamp(),
         });
@@ -62,8 +67,7 @@ export const publishTimetable = async ({
         universityName:
             college?.universityName || "",
 
-        academicYear:
-            college?.academicYear || "",
+        academicYear,
 
         courseKey,
 
@@ -91,13 +95,13 @@ export const publishTimetable = async ({
         publishedAt: serverTimestamp(),
     };
 
-    const timetableRef = await addDoc(
-        collection(db, "timetables"),
-        timetableData
-    );
+    const newTimetableRef = doc(collection(db, "timetables"));
+    batch.set(newTimetableRef, timetableData);
+
+    await batch.commit();
 
     return {
-        id: timetableRef.id,
+        id: newTimetableRef.id,
         ...timetableData,
     };
 };
@@ -123,3 +127,32 @@ export const getPublishedTimetablesForFaculty =
             ...doc.data(),
         }));
     };
+
+export const getAllPublishedTimetables = async (academicYear) => {
+    const timetableQuery = query(
+        collection(db, "timetables"),
+        where("status", "==", "published"),
+        where("academicYear", "==", academicYear)
+    );
+
+    const snapshot = await getDocs(timetableQuery);
+
+    return snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+    }));
+};
+
+export const getAllApprovedLeaves = async () => {
+    const leaveQuery = query(
+        collection(db, "leaveRequests"),
+        where("status", "==", "approved")
+    );
+
+    const snapshot = await getDocs(leaveQuery);
+
+    return snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+    }));
+};

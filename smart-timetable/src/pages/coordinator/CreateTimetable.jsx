@@ -6,6 +6,7 @@ import {
     getRooms,
     getFaculty,
 } from "../../services/collegeConfigService";
+import { getAllPublishedTimetables } from "../../services/timetableService";
 
 import { generateTimetable } from "../../services/scheduler/timetableEngine";
 
@@ -354,6 +355,16 @@ const CreateTimetable = () => {
             console.log("Course:", course);
             console.log("Subjects:", subjects);
 
+            const publishedData = await getAllPublishedTimetables(
+                college.academicYear || "unknown"
+            );
+
+            const existingSchedules = publishedData.flatMap(
+                (timetable) => timetable.schedule || []
+            );
+
+            console.log("Existing Global Schedules:", existingSchedules.length);
+
             const results = generateTimetable({
                 college,
                 faculty,
@@ -363,6 +374,7 @@ const CreateTimetable = () => {
                     course.studentCount
                 ),
                 numberOfOptions: 3,
+                existingSchedules,
             });
 
             console.log(

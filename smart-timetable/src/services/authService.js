@@ -12,6 +12,11 @@ import {
     setDoc,
     getDoc,
     serverTimestamp,
+    collection,
+    query,
+    where,
+    getDocs,
+    updateDoc,
 } from "firebase/firestore";
 
 export const signupUser = async ({
@@ -21,10 +26,24 @@ export const signupUser = async ({
     role,
     departmentId = "",
     studentId = "",
-    employeeId = "",
 }) => {
     if (!["faculty", "student"].includes(role)) {
         throw new Error("Invalid signup role");
+    }
+
+    let facultyDoc = null;
+    if (role === "faculty") {
+        const facultyQuery = query(
+            collection(db, "faculty"),
+            where("email", "==", email.toLowerCase())
+        );
+        const facultySnapshot = await getDocs(facultyQuery);
+        
+        if (facultySnapshot.empty) {
+            throw new Error("No pre-registered faculty found with this email. Please contact the administrator.");
+        }
+        
+        facultyDoc = facultySnapshot.docs[0];
     }
 
     const credential = await createUserWithEmailAndPassword(
@@ -39,17 +58,27 @@ export const signupUser = async ({
         displayName: name,
     });
 
-    await setDoc(doc(db, "users", user.uid), {
+    const userData = {
         uid: user.uid,
         name,
         email,
         role,
         departmentId,
         studentId,
-        employeeId,
         active: true,
         createdAt: serverTimestamp(),
-    });
+    };
+
+    if (role === "faculty" && facultyDoc) {
+        userData.facultyId = facultyDoc.id;
+        userData.employeeId = facultyDoc.data().employeeId;
+        
+        await updateDoc(doc(db, "faculty", facultyDoc.id), {
+            userId: user.uid,
+        });
+    }
+
+    await setDoc(doc(db, "users", user.uid), userData);
 
     return user;
 };

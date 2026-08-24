@@ -133,16 +133,7 @@ const Signup = () => {
                         />
                     )}
 
-                    {form.role === "faculty" && (
-                        <input
-                            name="employeeId"
-                            placeholder="Employee ID"
-                            value={form.employeeId}
-                            onChange={handleChange}
-                            required
-                            className="w-full rounded-lg border px-4 py-3"
-                        />
-                    )}
+                    {/* Faculty employeeId is no longer needed during signup as they are matched by email */}
 
                     <button
                         disabled={loading}

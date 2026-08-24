@@ -43,6 +43,9 @@ const CoordinatorDashboard = () => {
     const [leaveRequests, setLeaveRequests] =
         useState([]);
 
+    const [changeRequests, setChangeRequests] =
+        useState([]);
+
     const [loading, setLoading] =
         useState(true);
 
@@ -53,6 +56,9 @@ const CoordinatorDashboard = () => {
         useState("");
 
     const [processingLeaveId, setProcessingLeaveId] =
+        useState(null);
+
+    const [processingChangeId, setProcessingChangeId] =
         useState(null);
 
     /* =========================================================
@@ -178,6 +184,47 @@ const CoordinatorDashboard = () => {
                     );
                 }
             );
+
+        return () => {
+            unsubscribe();
+        };
+    }, [profile]);
+
+    /* =========================================================
+       REAL-TIME PENDING CHANGE REQUESTS
+    ========================================================= */
+
+    useEffect(() => {
+        if (!profile) {
+            return;
+        }
+
+        const pendingChangeQuery = query(
+            collection(db, "changeRequests"),
+            where("status", "==", "pending")
+        );
+
+        const unsubscribe = onSnapshot(
+            pendingChangeQuery,
+            (snapshot) => {
+                const requests = snapshot.docs
+                    .map((document) => ({
+                        id: document.id,
+                        ...document.data(),
+                    }))
+                    .sort((a, b) => {
+                        const timeA = a.createdAt?.toMillis?.() || 0;
+                        const timeB = b.createdAt?.toMillis?.() || 0;
+                        return timeB - timeA;
+                    });
+
+                setChangeRequests(requests);
+            },
+            (err) => {
+                console.error("Change request listener error:", err);
+                setError(err?.message || "Unable to load change requests.");
+            }
+        );
 
         return () => {
             unsubscribe();
@@ -329,6 +376,66 @@ const CoordinatorDashboard = () => {
                 );
             }
         };
+
+    /* =========================================================
+       APPROVE CHANGE REQUEST
+    ========================================================= */
+
+    const handleApproveChange = async (requestId) => {
+        if (!requestId) return;
+
+        try {
+            setProcessingChangeId(requestId);
+            setError("");
+
+            const requestRef = doc(db, "changeRequests", requestId);
+
+            await updateDoc(requestRef, {
+                status: "approved",
+                reviewedBy: user?.uid || profile?.id || "coordinator",
+                reviewedByName: profile?.name || "Coordinator",
+                reviewedAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+
+            setNotification("Change request approved successfully.");
+        } catch (err) {
+            console.error("Approve change error:", err);
+            setError(err?.message || "Failed to approve change request.");
+        } finally {
+            setProcessingChangeId(null);
+        }
+    };
+
+    /* =========================================================
+       REJECT CHANGE REQUEST
+    ========================================================= */
+
+    const handleRejectChange = async (requestId) => {
+        if (!requestId) return;
+
+        try {
+            setProcessingChangeId(requestId);
+            setError("");
+
+            const requestRef = doc(db, "changeRequests", requestId);
+
+            await updateDoc(requestRef, {
+                status: "rejected",
+                reviewedBy: user?.uid || profile?.id || "coordinator",
+                reviewedByName: profile?.name || "Coordinator",
+                reviewedAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+
+            setNotification("Change request rejected.");
+        } catch (err) {
+            console.error("Reject change error:", err);
+            setError(err?.message || "Failed to reject change request.");
+        } finally {
+            setProcessingChangeId(null);
+        }
+    };
 
     /* =========================================================
        LOADING
@@ -757,6 +864,96 @@ const CoordinatorDashboard = () => {
 
                         )}
 
+                    </div>
+
+                </div>
+
+
+                {/* =================================================
+                   FACULTY CHANGE REQUESTS
+                ================================================= */}
+
+                <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
+
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">
+                                Timetable Change Requests
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                Review timetable adjustments requested by faculty.
+                            </p>
+                        </div>
+
+                        <div className="w-fit rounded-full bg-blue-100 px-4 py-2">
+                            <span className="text-sm font-bold text-blue-700">
+                                {changeRequests.length} Pending
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                        {changeRequests.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                                <p className="text-2xl">✓</p>
+                                <p className="mt-2 font-semibold text-slate-700">
+                                    No pending change requests
+                                </p>
+                            </div>
+                        ) : (
+                            changeRequests.map((request) => {
+                                const isProcessing = processingChangeId === request.id;
+
+                                return (
+                                    <div
+                                        key={request.id}
+                                        className="rounded-xl border border-slate-200 bg-slate-50 p-5"
+                                    >
+                                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                            <div>
+                                                <p className="text-lg font-bold text-slate-900">
+                                                    {request.facultyName || "Faculty"}
+                                                </p>
+                                                <p className="mt-1 text-sm text-slate-500">
+                                                    Course Key: {request.courseKey || "-"}
+                                                </p>
+                                            </div>
+                                            <span className="w-fit rounded-full bg-blue-100 px-3 py-1 text-xs font-bold uppercase text-blue-700">
+                                                Pending
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-4 rounded-lg bg-white p-4">
+                                            <p className="text-xs font-semibold uppercase text-slate-400">
+                                                Details
+                                            </p>
+                                            <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">
+                                                {request.details || "No details provided."}
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                            <button
+                                                type="button"
+                                                disabled={isProcessing}
+                                                onClick={() => handleRejectChange(request.id)}
+                                                className="rounded-lg border border-red-200 bg-red-50 px-5 py-2.5 font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {isProcessing ? "Processing..." : "Decline"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={isProcessing}
+                                                onClick={() => handleApproveChange(request.id)}
+                                                className="rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {isProcessing ? "Processing..." : "Approve"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
 
                 </div>
