@@ -3,6 +3,7 @@ import {
     collection,
     doc,
     getDocs,
+    onSnapshot,
     query,
     serverTimestamp,
     updateDoc,
@@ -192,6 +193,62 @@ export const submitLeaveRequest =
             id: requestRef.id,
             ...leaveData,
         };
+    };
+
+
+
+/* =========================================================
+   COORDINATOR: REAL-TIME PENDING LEAVE REQUESTS
+========================================================= */
+
+export const subscribeToPendingLeaveRequests =
+    (onChange, onError) => {
+        const leaveQuery = query(
+            collection(
+                db,
+                "leaveRequests"
+            ),
+            where(
+                "status",
+                "==",
+                "pending"
+            )
+        );
+
+        return onSnapshot(
+            leaveQuery,
+            (snapshot) => {
+                const requests =
+                    snapshot.docs
+                        .map((leaveDoc) => ({
+                            id: leaveDoc.id,
+                            ...leaveDoc.data(),
+                        }))
+                        .sort((a, b) => {
+                            const aTime =
+                                a.createdAt?.toMillis?.() ||
+                                0;
+
+                            const bTime =
+                                b.createdAt?.toMillis?.() ||
+                                0;
+
+                            return bTime - aTime;
+                        });
+
+                onChange(requests);
+            },
+            (error) => {
+                console.error(
+                    "Pending leave listener error:",
+                    error
+                );
+
+                if (onError) {
+                    onError(error);
+                }
+            }
+        );
     };
 
 /* =========================================================

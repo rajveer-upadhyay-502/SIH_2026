@@ -726,7 +726,7 @@ const CreateTimetable = () => {
                                     e.target.value
                                 )
                             }
-                            placeholder="Duration"
+                            placeholder="Periods"
                             className="rounded-lg border px-4 py-3"
                         />
 

@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import {
+    collection,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    updateDoc,
+    doc,
+    where,
+} from "firebase/firestore";
+
 import { useAuth } from "../../context/AuthContext";
 import { logoutUser } from "../../services/authService";
 
@@ -10,35 +20,79 @@ import {
     getFaculty,
 } from "../../services/collegeConfigService";
 
+import { db } from "../../firebase/config";
+
 const CoordinatorDashboard = () => {
     const navigate = useNavigate();
-    const { profile } = useAuth();
 
-    const [college, setCollege] = useState(null);
-    const [rooms, setRooms] = useState([]);
-    const [faculty, setFaculty] = useState([]);
+    const { profile, user } = useAuth();
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    /* =========================================================
+       STATE
+    ========================================================= */
+
+    const [college, setCollege] =
+        useState(null);
+
+    const [rooms, setRooms] =
+        useState([]);
+
+    const [faculty, setFaculty] =
+        useState([]);
+
+    const [leaveRequests, setLeaveRequests] =
+        useState([]);
+
+    const [loading, setLoading] =
+        useState(true);
+
+    const [error, setError] =
+        useState("");
+
+    const [notification, setNotification] =
+        useState("");
+
+    const [processingLeaveId, setProcessingLeaveId] =
+        useState(null);
+
+    /* =========================================================
+       LOAD COLLEGE RESOURCES
+    ========================================================= */
 
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
+
                 setError("");
 
-                const [collegeData, roomsData, facultyData] =
-                    await Promise.all([
-                        getCollegeConfig(),
-                        getRooms(),
-                        getFaculty(),
-                    ]);
+                const [
+                    collegeData,
+                    roomsData,
+                    facultyData,
+                ] = await Promise.all([
+                    getCollegeConfig(),
+                    getRooms(),
+                    getFaculty(),
+                ]);
 
-                setCollege(collegeData);
-                setRooms(roomsData);
-                setFaculty(facultyData);
+                setCollege(
+                    collegeData
+                );
+
+                setRooms(
+                    roomsData || []
+                );
+
+                setFaculty(
+                    facultyData || []
+                );
             } catch (err) {
-                console.error("Coordinator dashboard error:", err);
+                console.error(
+                    "Coordinator dashboard error:",
+                    err
+                );
+
                 setError(
                     err?.message ||
                     "Unable to load college configuration."
@@ -51,57 +105,356 @@ const CoordinatorDashboard = () => {
         loadData();
     }, []);
 
+    /* =========================================================
+       REAL-TIME PENDING LEAVE REQUESTS
+    ========================================================= */
+
+    useEffect(() => {
+        if (!profile) {
+            return;
+        }
+
+        const pendingLeaveQuery =
+            query(
+                collection(
+                    db,
+                    "leaveRequests"
+                ),
+                where(
+                    "status",
+                    "==",
+                    "pending"
+                )
+            );
+
+        const unsubscribe =
+            onSnapshot(
+                pendingLeaveQuery,
+                (snapshot) => {
+                    const requests =
+                        snapshot.docs
+                            .map(
+                                (document) => ({
+                                    id:
+                                        document.id,
+                                    ...document.data(),
+                                })
+                            )
+                            .sort(
+                                (
+                                    a,
+                                    b
+                                ) => {
+                                    const timeA =
+                                        a.createdAt
+                                            ?.toMillis?.() ||
+                                        0;
+
+                                    const timeB =
+                                        b.createdAt
+                                            ?.toMillis?.() ||
+                                        0;
+
+                                    return (
+                                        timeB -
+                                        timeA
+                                    );
+                                }
+                            );
+
+                    setLeaveRequests(
+                        requests
+                    );
+                },
+                (err) => {
+                    console.error(
+                        "Leave request listener error:",
+                        err
+                    );
+
+                    setError(
+                        err?.message ||
+                        "Unable to load leave requests."
+                    );
+                }
+            );
+
+        return () => {
+            unsubscribe();
+        };
+    }, [profile]);
+
+    /* =========================================================
+       APPROVE LEAVE
+    ========================================================= */
+
+    const handleApproveLeave =
+        async (requestId) => {
+            if (!requestId) {
+                return;
+            }
+
+            try {
+                setProcessingLeaveId(
+                    requestId
+                );
+
+                setError("");
+
+                const requestRef =
+                    doc(
+                        db,
+                        "leaveRequests",
+                        requestId
+                    );
+
+                await updateDoc(
+                    requestRef,
+                    {
+                        status: "approved",
+
+                        reviewedBy:
+                            user?.uid ||
+                            profile?.id ||
+                            "coordinator",
+
+                        reviewedByName:
+                            profile?.name ||
+                            "Coordinator",
+
+                        reviewedAt:
+                            serverTimestamp(),
+
+                        updatedAt:
+                            serverTimestamp(),
+                    }
+                );
+
+                setNotification(
+                    "Leave request approved successfully."
+                );
+
+                /*
+                  The real-time listener is watching:
+                  status == "pending"
+
+                  Therefore this request will automatically
+                  disappear from the pending list.
+                */
+            } catch (err) {
+                console.error(
+                    "Approve leave error:",
+                    err
+                );
+
+                setError(
+                    err?.message ||
+                    "Failed to approve leave request."
+                );
+            } finally {
+                setProcessingLeaveId(
+                    null
+                );
+            }
+        };
+
+    /* =========================================================
+       REJECT LEAVE
+    ========================================================= */
+
+    const handleRejectLeave =
+        async (requestId) => {
+            if (!requestId) {
+                return;
+            }
+
+            try {
+                setProcessingLeaveId(
+                    requestId
+                );
+
+                setError("");
+
+                const requestRef =
+                    doc(
+                        db,
+                        "leaveRequests",
+                        requestId
+                    );
+
+                await updateDoc(
+                    requestRef,
+                    {
+                        status: "rejected",
+
+                        reviewedBy:
+                            user?.uid ||
+                            profile?.id ||
+                            "coordinator",
+
+                        reviewedByName:
+                            profile?.name ||
+                            "Coordinator",
+
+                        reviewedAt:
+                            serverTimestamp(),
+
+                        updatedAt:
+                            serverTimestamp(),
+                    }
+                );
+
+                setNotification(
+                    "Leave request rejected."
+                );
+
+                /*
+                  Again, because the listener only retrieves
+                  status == pending, this request disappears
+                  automatically after the update.
+                */
+            } catch (err) {
+                console.error(
+                    "Reject leave error:",
+                    err
+                );
+
+                setError(
+                    err?.message ||
+                    "Failed to reject leave request."
+                );
+            } finally {
+                setProcessingLeaveId(
+                    null
+                );
+            }
+        };
+
+    /* =========================================================
+       LOADING
+    ========================================================= */
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+
                 <div className="rounded-xl bg-white px-6 py-5 shadow">
+
                     <p className="font-semibold text-slate-800">
                         Loading coordinator dashboard...
                     </p>
+
                 </div>
+
             </div>
         );
     }
 
+    /* =========================================================
+       MAIN UI
+    ========================================================= */
+
     return (
         <div className="min-h-screen bg-slate-100">
+
+            {/* =================================================
+               HEADER
+            ================================================= */}
+
             <header className="border-b bg-white">
+
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-5">
+
                     <div>
+
                         <h1 className="text-2xl font-bold text-slate-900">
                             Academic Coordinator
                         </h1>
 
                         <p className="mt-1 text-sm text-slate-500">
-                            {profile?.name || "Coordinator"}
+                            {profile?.name ||
+                                "Coordinator"}
                         </p>
+
                     </div>
 
                     <button
-                        onClick={logoutUser}
+                        onClick={
+                            logoutUser
+                        }
                         className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
                     >
                         Logout
                     </button>
+
                 </div>
+
             </header>
 
+
             <main className="mx-auto max-w-7xl px-8 py-8">
+
+                {/* =================================================
+                   ERROR
+                ================================================= */}
+
                 {error && (
-                    <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-                        <p className="font-semibold">
-                            Failed to load configuration
+                    <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+
+                        <p className="font-semibold text-red-700">
+                            Something went wrong
                         </p>
 
-                        <p className="mt-1 text-sm">
+                        <p className="mt-1 text-sm text-red-600">
                             {error}
                         </p>
+
                     </div>
                 )}
 
-                {/* COLLEGE INFORMATION */}
+
+                {/* =================================================
+                   NOTIFICATION
+                ================================================= */}
+
+                {notification && (
+                    <div className="mb-6 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4">
+
+                        <div>
+
+                            <p className="font-semibold text-blue-800">
+                                Notification
+                            </p>
+
+                            <p className="mt-1 text-sm text-blue-700">
+                                {
+                                    notification
+                                }
+                            </p>
+
+                        </div>
+
+                        <button
+                            onClick={() =>
+                                setNotification(
+                                    ""
+                                )
+                            }
+                            className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-semibold text-blue-700"
+                        >
+                            Dismiss
+                        </button>
+
+                    </div>
+                )}
+
+
+                {/* =================================================
+                   COLLEGE INFORMATION
+                ================================================= */}
 
                 <div className="rounded-2xl bg-white p-8 shadow-sm">
+
                     <p className="text-sm font-semibold text-blue-600">
                         College
                     </p>
@@ -116,190 +469,484 @@ const CoordinatorDashboard = () => {
                             "No university information available"}
                     </p>
 
+
                     <div className="mt-6 grid gap-4 md:grid-cols-4">
+
                         <div className="rounded-xl bg-slate-50 p-4">
+
                             <p className="text-xs text-slate-500">
                                 Academic Year
                             </p>
 
                             <p className="mt-1 font-semibold">
-                                {college?.academicYear || "-"}
+                                {college?.academicYear ||
+                                    "-"}
                             </p>
+
                         </div>
 
+
                         <div className="rounded-xl bg-slate-50 p-4">
+
                             <p className="text-xs text-slate-500">
                                 Working Days
                             </p>
 
                             <p className="mt-1 font-semibold">
-                                {college?.workingDays?.length || 0}
+                                {
+                                    college
+                                        ?.workingDays
+                                        ?.length ||
+                                    0
+                                }
                             </p>
+
                         </div>
 
+
                         <div className="rounded-xl bg-slate-50 p-4">
+
                             <p className="text-xs text-slate-500">
                                 Rooms
                             </p>
 
                             <p className="mt-1 font-semibold">
-                                {rooms.length}
+                                {
+                                    rooms.length
+                                }
                             </p>
+
                         </div>
 
+
                         <div className="rounded-xl bg-slate-50 p-4">
+
                             <p className="text-xs text-slate-500">
                                 Faculty
                             </p>
 
                             <p className="mt-1 font-semibold">
-                                {faculty.length}
+                                {
+                                    faculty.length
+                                }
                             </p>
+
                         </div>
+
                     </div>
+
                 </div>
 
-                {/* ACTIONS */}
 
-                <div className="mt-8">
-                    <h2 className="text-xl font-bold text-slate-900">
-                        Timetable Management
-                    </h2>
+                {/* =================================================
+                   FACULTY LEAVE REQUESTS
+                ================================================= */}
 
-                    <p className="mt-1 text-sm text-slate-500">
-                        Use the administrator's saved resources
-                        to create an optimized timetable.
-                    </p>
+                <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
 
-                    <div className="mt-6 grid gap-6 md:grid-cols-3">
-                        <button
-                            onClick={() =>
-                                navigate("/coordinator/create-timetable")
-                            }
-                            className="rounded-2xl bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                        >
-                            <div className="text-3xl">
-                                +
-                            </div>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
-                            <h3 className="mt-4 text-lg font-bold">
-                                Create Timetable
-                            </h3>
+                        <div>
 
-                            <p className="mt-2 text-sm text-slate-500">
-                                Create a timetable for a specific
-                                program, semester and section.
+                            <h2 className="text-xl font-bold text-slate-900">
+                                Faculty Leave Requests
+                            </h2>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                                Review leave requests submitted by faculty members.
                             </p>
-                        </button>
 
-                        <button
-                            className="rounded-2xl bg-white p-6 text-left shadow-sm"
-                        >
-                            <div className="text-3xl">
-                                📋
-                            </div>
+                        </div>
 
-                            <h3 className="mt-4 text-lg font-bold">
-                                Draft Timetables
-                            </h3>
+                        <div className="w-fit rounded-full bg-amber-100 px-4 py-2">
 
-                            <p className="mt-2 text-sm text-slate-500">
-                                View and manage generated drafts.
-                            </p>
-                        </button>
+                            <span className="text-sm font-bold text-amber-700">
+                                {
+                                    leaveRequests.length
+                                }{" "}
+                                Pending
+                            </span>
 
-                        <button
-                            className="rounded-2xl bg-white p-6 text-left shadow-sm"
-                        >
-                            <div className="text-3xl">
-                                ✓
-                            </div>
+                        </div>
 
-                            <h3 className="mt-4 text-lg font-bold">
-                                Approval Requests
-                            </h3>
-
-                            <p className="mt-2 text-sm text-slate-500">
-                                Submit or track timetable approvals.
-                            </p>
-                        </button>
                     </div>
+
+
+                    <div className="mt-6 space-y-4">
+
+                        {leaveRequests.length ===
+                            0 ? (
+
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+
+                                <p className="text-2xl">
+                                    ✓
+                                </p>
+
+                                <p className="mt-2 font-semibold text-slate-700">
+                                    No pending leave requests
+                                </p>
+
+                                <p className="mt-1 text-sm text-slate-500">
+                                    New faculty requests will appear here automatically.
+                                </p>
+
+                            </div>
+
+                        ) : (
+
+                            leaveRequests.map(
+                                (request) => {
+
+                                    const isProcessing =
+                                        processingLeaveId ===
+                                        request.id;
+
+                                    return (
+                                        <div
+                                            key={
+                                                request.id
+                                            }
+                                            className="rounded-xl border border-slate-200 bg-slate-50 p-5"
+                                        >
+
+                                            {/* REQUEST HEADER */}
+
+                                            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                                                <div>
+
+                                                    <p className="text-lg font-bold text-slate-900">
+                                                        {
+                                                            request.facultyName ||
+                                                            "Faculty"
+                                                        }
+                                                    </p>
+
+                                                    <p className="mt-1 text-sm text-slate-500">
+                                                        Faculty ID:{" "}
+                                                        {
+                                                            request.facultyId ||
+                                                            "-"
+                                                        }
+                                                    </p>
+
+                                                </div>
+
+                                                <span className="w-fit rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase text-amber-700">
+                                                    Pending
+                                                </span>
+
+                                            </div>
+
+
+                                            {/* DATES */}
+
+                                            <div className="mt-4 grid gap-3 md:grid-cols-3">
+
+                                                <div className="rounded-lg bg-white p-3">
+
+                                                    <p className="text-xs text-slate-400">
+                                                        Start Date
+                                                    </p>
+
+                                                    <p className="mt-1 font-semibold">
+                                                        {
+                                                            request.startDate ||
+                                                            "-"
+                                                        }
+                                                    </p>
+
+                                                </div>
+
+
+                                                <div className="rounded-lg bg-white p-3">
+
+                                                    <p className="text-xs text-slate-400">
+                                                        End Date
+                                                    </p>
+
+                                                    <p className="mt-1 font-semibold">
+                                                        {
+                                                            request.endDate ||
+                                                            "-"
+                                                        }
+                                                    </p>
+
+                                                </div>
+
+
+                                                <div className="rounded-lg bg-white p-3">
+
+                                                    <p className="text-xs text-slate-400">
+                                                        Status
+                                                    </p>
+
+                                                    <p className="mt-1 font-semibold text-amber-600">
+                                                        Pending Review
+                                                    </p>
+
+                                                </div>
+
+                                            </div>
+
+
+                                            {/* REASON */}
+
+                                            <div className="mt-4 rounded-lg bg-white p-4">
+
+                                                <p className="text-xs font-semibold uppercase text-slate-400">
+                                                    Reason
+                                                </p>
+
+                                                <p className="mt-1 text-sm text-slate-700">
+                                                    {
+                                                        request.reason ||
+                                                        "No reason provided."
+                                                    }
+                                                </p>
+
+                                            </div>
+
+
+                                            {/* ACTION BUTTONS */}
+
+                                            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+
+                                                <button
+                                                    type="button"
+                                                    disabled={
+                                                        isProcessing
+                                                    }
+                                                    onClick={() =>
+                                                        handleRejectLeave(
+                                                            request.id
+                                                        )
+                                                    }
+                                                    className="rounded-lg border border-red-200 bg-red-50 px-5 py-2.5 font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {isProcessing
+                                                        ? "Processing..."
+                                                        : "Decline"}
+                                                </button>
+
+
+                                                <button
+                                                    type="button"
+                                                    disabled={
+                                                        isProcessing
+                                                    }
+                                                    onClick={() =>
+                                                        handleApproveLeave(
+                                                            request.id
+                                                        )
+                                                    }
+                                                    className="rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {isProcessing
+                                                        ? "Processing..."
+                                                        : "Approve"}
+                                                </button>
+
+                                            </div>
+
+                                        </div>
+                                    );
+                                }
+                            )
+
+                        )}
+
+                    </div>
+
                 </div>
 
-                {/* RESOURCE SUMMARY */}
+
+                {/* =================================================
+                   RESOURCE CARDS
+                ================================================= */}
 
                 <div className="mt-8 grid gap-6 md:grid-cols-2">
+
+
+                    {/* ROOMS */}
+
                     <div className="rounded-2xl bg-white p-6 shadow-sm">
+
                         <h3 className="font-bold">
-                            Available Rooms
+                            Rooms
                         </h3>
 
                         <div className="mt-4 space-y-3">
-                            {rooms.length === 0 ? (
+
+                            {rooms.length ===
+                                0 ? (
+
                                 <p className="text-sm text-slate-500">
                                     No rooms configured yet.
                                 </p>
+
                             ) : (
-                                rooms.slice(0, 6).map((room) => (
-                                    <div
-                                        key={room.id}
-                                        className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                                    >
-                                        <div>
-                                            <p className="font-medium">
-                                                {room.name}
-                                            </p>
 
-                                            <p className="text-xs capitalize text-slate-500">
-                                                {room.type}
-                                            </p>
-                                        </div>
+                                rooms
+                                    .slice(
+                                        0,
+                                        6
+                                    )
+                                    .map(
+                                        (
+                                            room
+                                        ) => (
 
-                                        <span className="text-sm font-semibold">
-                                            {room.capacity} seats
-                                        </span>
-                                    </div>
-                                ))
+                                            <div
+                                                key={
+                                                    room.id
+                                                }
+                                                className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
+                                            >
+
+                                                <div>
+
+                                                    <p className="font-medium">
+                                                        {
+                                                            room.name
+                                                        }
+                                                    </p>
+
+                                                    <p className="text-xs capitalize text-slate-500">
+                                                        {
+                                                            room.type
+                                                        }
+                                                    </p>
+
+                                                </div>
+
+                                                <span className="text-sm font-semibold">
+                                                    {
+                                                        room.capacity
+                                                    }{" "}
+                                                    seats
+                                                </span>
+
+                                            </div>
+
+                                        )
+                                    )
+
                             )}
+
                         </div>
+
                     </div>
 
+
+                    {/* FACULTY */}
+
                     <div className="rounded-2xl bg-white p-6 shadow-sm">
+
                         <h3 className="font-bold">
                             Faculty Resources
                         </h3>
 
                         <div className="mt-4 space-y-3">
-                            {faculty.length === 0 ? (
+
+                            {faculty.length ===
+                                0 ? (
+
                                 <p className="text-sm text-slate-500">
                                     No faculty configured yet.
                                 </p>
+
                             ) : (
-                                faculty.slice(0, 6).map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                                    >
-                                        <div>
-                                            <p className="font-medium">
-                                                {item.name}
-                                            </p>
 
-                                            <p className="text-xs text-slate-500">
-                                                {item.department || "-"}
-                                            </p>
-                                        </div>
+                                faculty
+                                    .slice(
+                                        0,
+                                        6
+                                    )
+                                    .map(
+                                        (
+                                            item
+                                        ) => (
 
-                                        <span className="text-sm font-semibold">
-                                            {item.maxHoursPerWeek} hrs/week
-                                        </span>
-                                    </div>
-                                ))
+                                            <div
+                                                key={
+                                                    item.id
+                                                }
+                                                className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
+                                            >
+
+                                                <div>
+
+                                                    <p className="font-medium">
+                                                        {
+                                                            item.name
+                                                        }
+                                                    </p>
+
+                                                    <p className="text-xs text-slate-500">
+                                                        {
+                                                            item.department ||
+                                                            "-"
+                                                        }
+                                                    </p>
+
+                                                </div>
+
+                                                <span className="text-sm font-semibold">
+                                                    {
+                                                        item.maxHoursPerWeek
+                                                    }{" "}
+                                                    hrs/week
+                                                </span>
+
+                                            </div>
+
+                                        )
+                                    )
+
                             )}
+
                         </div>
+
                     </div>
+
                 </div>
+
+
+                {/* =================================================
+                   TIMETABLE MANAGEMENT
+                ================================================= */}
+
+                <div className="mt-8">
+
+                    <h2 className="text-xl font-bold text-slate-900">
+                        Timetable Management
+                    </h2>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                        Use the administrator's saved resources to create an optimized timetable.
+                    </p>
+
+                    <div className="mt-5">
+
+                        <button
+                            onClick={() =>
+                                navigate(
+                                    "/coordinator/create-timetable"
+                                )
+                            }
+                            className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+                        >
+                            Create Timetable
+                        </button>
+
+                    </div>
+
+                </div>
+
             </main>
+
         </div>
     );
 };

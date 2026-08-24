@@ -255,35 +255,79 @@ const facultyAvailable = ({
 }) => {
     /*
       Supported formats:
-  
+
+      1) Day-level availability
       {
-        Monday: true
+        Monday: true,
+        Tuesday: false
       }
-  
-      OR
-  
+
+      2) Period-level availability
       {
-        Monday: [1,2,3]
+        Monday: [1, 2, 3],
+        Tuesday: []
       }
+
+      3) Compact available-days form
+      {
+        availableDays: [
+          "Monday",
+          "Wednesday",
+          "Friday"
+        ]
+      }
+
+      No availability field means "no additional
+      restriction", preserving the existing behaviour.
     */
 
-    if (!faculty?.availability) {
-        return true;
+    if (!faculty) {
+        return false;
     }
 
     const availability =
-        faculty.availability[slot.day];
+        faculty.availability;
 
-    if (availability === undefined) {
+    if (
+        availability === undefined ||
+        availability === null
+    ) {
         return true;
     }
 
-    if (typeof availability === "boolean") {
-        return availability;
+    if (
+        Array.isArray(
+            availability.availableDays
+        )
+    ) {
+        return availability.availableDays.includes(
+            slot.day
+        );
     }
 
-    if (Array.isArray(availability)) {
-        return availability.includes(
+    const dayAvailability =
+        availability[slot.day];
+
+    if (
+        dayAvailability === undefined ||
+        dayAvailability === null
+    ) {
+        return true;
+    }
+
+    if (
+        typeof dayAvailability ===
+        "boolean"
+    ) {
+        return dayAvailability;
+    }
+
+    if (
+        Array.isArray(
+            dayAvailability
+        )
+    ) {
+        return dayAvailability.includes(
             slot.period
         );
     }
