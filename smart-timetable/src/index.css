@@ -1,12 +1,801 @@
 @import "tailwindcss";
 
+/* =========================================================
+   SMART TIMETABLE
+   macOS / iOS LIQUID GLASS DESIGN SYSTEM
+========================================================= */
+
+:root {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    Inter,
+    system-ui,
+    sans-serif;
+
+  color-scheme: light;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --glass-white: rgba(255, 255, 255, 0.58);
+  --glass-white-strong: rgba(255, 255, 255, 0.72);
+  --glass-white-soft: rgba(255, 255, 255, 0.42);
+
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-border-soft: rgba(255, 255, 255, 0.5);
+
+  --glass-shadow:
+    0 18px 50px rgba(15, 23, 42, 0.08),
+    0 4px 16px rgba(15, 23, 42, 0.05);
+
+  --glass-shadow-hover:
+    0 28px 70px rgba(15, 23, 42, 0.12),
+    0 8px 24px rgba(15, 23, 42, 0.07);
+
+  --text-main: #0f172a;
+  --text-soft: #64748b;
+  --blue-glass: rgba(59, 130, 246, 0.78);
+  --green-glass: rgba(16, 185, 129, 0.78);
+  --red-glass: rgba(239, 68, 68, 0.78);
+
+  --radius-glass: 22px;
+}
+
+/* =========================================================
+   RESET
+========================================================= */
+
 * {
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+  background: #eef4fb;
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  background: #f8fafc;
+  min-width: 320px;
+  min-height: 100vh;
+
+  color: var(--text-main);
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    Inter,
+    system-ui,
+    sans-serif;
+
+  background:
+    radial-gradient(circle at 8% 12%,
+      rgba(96, 165, 250, 0.24),
+      transparent 28%),
+    radial-gradient(circle at 88% 15%,
+      rgba(167, 139, 250, 0.22),
+      transparent 28%),
+    radial-gradient(circle at 50% 90%,
+      rgba(45, 212, 191, 0.14),
+      transparent 30%),
+    linear-gradient(135deg,
+      #edf3fa 0%,
+      #f8fbff 48%,
+      #eef4fb 100%);
+
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   AMBIENT LIQUID LIGHT
+========================================================= */
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+
+  border-radius: 999px;
+
+  filter: blur(80px);
+
+  opacity: 0.42;
+
+  animation:
+    liquidFloat 15s ease-in-out infinite alternate;
+}
+
+body::before {
+  width: 420px;
+  height: 420px;
+
+  left: -130px;
+  top: 100px;
+
+  background:
+    radial-gradient(circle,
+      rgba(96, 165, 250, 0.42),
+      transparent 70%);
+}
+
+body::after {
+  width: 520px;
+  height: 520px;
+
+  right: -180px;
+  bottom: -140px;
+
+  background:
+    radial-gradient(circle,
+      rgba(139, 92, 246, 0.34),
+      transparent 70%);
+
+  animation-delay: -6s;
+}
+
+/* =========================================================
+   APP SHELL
+========================================================= */
+
+.app-shell {
+  min-height: 100vh;
+
+  position: relative;
+
+  isolation: isolate;
+}
+
+.app-shell::before {
+  content: "";
+
+  position: fixed;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(120deg,
+      rgba(255, 255, 255, 0.18),
+      transparent 30%,
+      rgba(255, 255, 255, 0.1));
+
+  z-index: -1;
+}
+
+/* =========================================================
+   SELECTION
+========================================================= */
+
+::selection {
+  background: rgba(96, 165, 250, 0.28);
   color: #0f172a;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg,
+      rgba(148, 163, 184, 0.48),
+      rgba(100, 116, 139, 0.32));
+
+  border-radius: 999px;
+
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg,
+      rgba(100, 116, 139, 0.64),
+      rgba(71, 85, 105, 0.48));
+
+  background-clip: padding-box;
+}
+
+/* =========================================================
+   HEADERS
+========================================================= */
+
+header {
+  background:
+    rgba(255, 255, 255, 0.48) !important;
+
+  backdrop-filter: blur(28px) saturate(145%);
+  -webkit-backdrop-filter: blur(28px) saturate(145%);
+
+  border-color:
+    rgba(255, 255, 255, 0.7) !important;
+
+  box-shadow:
+    0 8px 30px rgba(15, 23, 42, 0.045);
+
+  position: relative;
+
+  overflow: hidden;
+}
+
+header::after {
+  content: "";
+
+  position: absolute;
+
+  left: 12%;
+  right: 12%;
+  top: 0;
+
+  height: 1px;
+
+  background:
+    linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.95),
+      transparent);
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   WHITE CARDS
+   Existing UI already uses bg-white extensively.
+   We globally turn these into glass surfaces.
+========================================================= */
+
+.bg-white {
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.72),
+      rgba(255, 255, 255, 0.46)) !important;
+
+  backdrop-filter:
+    blur(24px) saturate(145%);
+
+  -webkit-backdrop-filter:
+    blur(24px) saturate(145%);
+
+  border-color:
+    rgba(255, 255, 255, 0.72) !important;
+}
+
+/* =========================================================
+   SOFT SURFACES
+========================================================= */
+
+.bg-slate-50 {
+  background:
+    rgba(255, 255, 255, 0.34) !important;
+
+  backdrop-filter: blur(18px);
+
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.bg-slate-100 {
+  background:
+    rgba(241, 245, 249, 0.42) !important;
+}
+
+/* =========================================================
+   GLASS BORDERS
+========================================================= */
+
+.border {
+  border-color:
+    rgba(148, 163, 184, 0.2) !important;
+}
+
+.border-slate-200 {
+  border-color:
+    rgba(148, 163, 184, 0.2) !important;
+}
+
+.border-slate-300 {
+  border-color:
+    rgba(148, 163, 184, 0.24) !important;
+}
+
+/* =========================================================
+   ROUNDED SURFACES
+========================================================= */
+
+.rounded-2xl,
+.rounded-xl {
+  position: relative;
+}
+
+/* =========================================================
+   CARDS / PANELS
+========================================================= */
+
+section.rounded-2xl,
+div.rounded-2xl {
+  box-shadow: var(--glass-shadow);
+
+  transition:
+    transform 260ms ease,
+    box-shadow 260ms ease,
+    border-color 260ms ease;
+
+  animation:
+    glassAppear 500ms cubic-bezier(0.22,
+      1,
+      0.36,
+      1) both;
+}
+
+section.rounded-2xl:hover,
+div.rounded-2xl:hover {
+  box-shadow: var(--glass-shadow-hover);
+}
+
+/*
+  Avoid lifting large timetable tables too aggressively.
+*/
+
+table .rounded-2xl,
+table .rounded-xl {
+  animation: none !important;
+}
+
+/* =========================================================
+   GLASS HIGHLIGHT
+========================================================= */
+
+section.rounded-2xl::before,
+div.rounded-2xl::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 10%;
+  right: 10%;
+
+  height: 1px;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.9),
+      transparent);
+
+  opacity: 0.65;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+button {
+  border: 1px solid rgba(255, 255, 255, 0.58) !important;
+
+  border-radius: 14px;
+
+  backdrop-filter:
+    blur(18px) saturate(150%);
+
+  -webkit-backdrop-filter:
+    blur(18px) saturate(150%);
+
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+
+  transition:
+    transform 180ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease,
+    border-color 220ms ease;
+
+  position: relative;
+  overflow: hidden;
+}
+
+button::after {
+  content: "";
+
+  position: absolute;
+
+  top: -70%;
+  left: -35%;
+
+  width: 28%;
+  height: 240%;
+
+  transform: rotate(24deg);
+
+  background:
+    linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.28),
+      transparent);
+
+  opacity: 0;
+
+  pointer-events: none;
+}
+
+button:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+button:hover::after {
+  opacity: 1;
+
+  animation:
+    glassSweep 750ms ease forwards;
+}
+
+button:active {
+  transform:
+    translateY(1px) scale(0.985);
+
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.08);
+}
+
+/* Primary blue buttons */
+
+button.bg-blue-600 {
+  background:
+    linear-gradient(135deg,
+      rgba(59, 130, 246, 0.88),
+      rgba(37, 99, 235, 0.72)) !important;
+
+  color: white !important;
+
+  box-shadow:
+    0 12px 28px rgba(37, 99, 235, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+button.bg-blue-700,
+button:hover.bg-blue-700 {
+  background:
+    linear-gradient(135deg,
+      rgba(37, 99, 235, 0.92),
+      rgba(29, 78, 216, 0.78)) !important;
+
+  color: white !important;
+}
+
+/* Green buttons */
+
+button.bg-emerald-600 {
+  background:
+    linear-gradient(135deg,
+      rgba(16, 185, 129, 0.88),
+      rgba(5, 150, 105, 0.72)) !important;
+
+  color: white !important;
+
+  box-shadow:
+    0 12px 28px rgba(5, 150, 105, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+/* Red buttons */
+
+button.bg-red-500 {
+  background:
+    linear-gradient(135deg,
+      rgba(239, 68, 68, 0.84),
+      rgba(220, 38, 38, 0.7)) !important;
+
+  color: white !important;
+}
+
+/* =========================================================
+   INPUTS
+========================================================= */
+
+input,
+select,
+textarea {
+  background:
+    rgba(255, 255, 255, 0.46) !important;
+
+  backdrop-filter:
+    blur(18px) saturate(135%);
+
+  -webkit-backdrop-filter:
+    blur(18px) saturate(135%);
+
+  border:
+    1px solid rgba(148, 163, 184, 0.24) !important;
+
+  border-radius: 14px !important;
+
+  color: #0f172a;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 4px 18px rgba(15, 23, 42, 0.035);
+
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+
+  outline: none;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  background:
+    rgba(255, 255, 255, 0.58) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  background:
+    rgba(255, 255, 255, 0.68) !important;
+
+  border-color:
+    rgba(59, 130, 246, 0.46) !important;
+
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.1),
+    0 8px 25px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* =========================================================
+   TABLES
+========================================================= */
+
+table {
+  overflow: hidden;
+
+  border-radius: 18px;
+
+  background:
+    rgba(255, 255, 255, 0.34);
+
+  backdrop-filter:
+    blur(20px);
+
+  -webkit-backdrop-filter:
+    blur(20px);
+}
+
+thead th,
+th.bg-slate-900 {
+  background:
+    linear-gradient(135deg,
+      rgba(15, 23, 42, 0.86),
+      rgba(30, 41, 59, 0.78)) !important;
+
+  color: rgba(255, 255, 255, 0.95) !important;
+
+  border-color:
+    rgba(255, 255, 255, 0.1) !important;
+
+  backdrop-filter:
+    blur(22px);
+}
+
+tbody tr {
+  transition:
+    background 180ms ease;
+}
+
+tbody tr:hover {
+  background:
+    rgba(255, 255, 255, 0.28);
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+
+.rounded-full {
+  backdrop-filter:
+    blur(14px);
+
+  -webkit-backdrop-filter:
+    blur(14px);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+/* =========================================================
+   LINKS
+========================================================= */
+
+a {
+  transition:
+    color 180ms ease,
+    opacity 180ms ease;
+
+  text-underline-offset: 3px;
+}
+
+/* =========================================================
+   TEXTAREA
+========================================================= */
+
+textarea {
+  resize: vertical;
+}
+
+/* =========================================================
+   CHECKBOX / RADIO
+========================================================= */
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #3b82f6;
+
+  width: 18px;
+  height: 18px;
+
+  box-shadow: none;
+
+  background: transparent !important;
+
+  backdrop-filter: none;
+}
+
+/* =========================================================
+   DISABLED
+========================================================= */
+
+button:disabled {
+  cursor: not-allowed;
+
+  transform: none !important;
+
+  opacity: 0.55;
+
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* =========================================================
+   FIXED / STICKY ELEMENTS
+========================================================= */
+
+.sticky {
+  backdrop-filter:
+    blur(24px) saturate(140%);
+
+  -webkit-backdrop-filter:
+    blur(24px) saturate(140%);
+}
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes liquidFloat {
+  0% {
+    transform:
+      translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform:
+      translate3d(20px, -15px, 0) scale(1.05);
+  }
+
+  100% {
+    transform:
+      translate3d(-15px, 20px, 0) scale(0.98);
+  }
+}
+
+@keyframes glassAppear {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0) scale(1);
+  }
+}
+
+@keyframes glassSweep {
+  from {
+    left: -35%;
+  }
+
+  to {
+    left: 125%;
+  }
+}
+
+/* =========================================================
+   REDUCE MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 640px) {
+  body {
+    background:
+      radial-gradient(circle at 20% 10%,
+        rgba(96, 165, 250, 0.2),
+        transparent 34%),
+      radial-gradient(circle at 90% 80%,
+        rgba(139, 92, 246, 0.18),
+        transparent 35%),
+      linear-gradient(135deg,
+        #eef4fa,
+        #f9fbff);
+  }
+
+  body::before {
+    width: 260px;
+    height: 260px;
+
+    filter: blur(65px);
+  }
+
+  body::after {
+    width: 300px;
+    height: 300px;
+
+    filter: blur(65px);
+  }
+
+  section.rounded-2xl,
+  div.rounded-2xl {
+    box-shadow:
+      0 12px 35px rgba(15, 23, 42, 0.07);
+  }
 }
