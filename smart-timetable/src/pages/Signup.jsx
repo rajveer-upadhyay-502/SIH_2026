@@ -40,7 +40,8 @@ const Signup = () => {
             console.error(error);
 
             setError(
-                error.code === "auth/email-already-in-use"
+                error.code ===
+                    "auth/email-already-in-use"
                     ? "An account with this email already exists."
                     : error.message
             );
@@ -109,8 +110,13 @@ const Signup = () => {
                         onChange={handleChange}
                         className="w-full rounded-lg border px-4 py-3"
                     >
-                        <option value="student">Student</option>
-                        <option value="faculty">Faculty</option>
+                        <option value="student">
+                            Student
+                        </option>
+
+                        <option value="faculty">
+                            Faculty
+                        </option>
                     </select>
 
                     <input
@@ -133,19 +139,31 @@ const Signup = () => {
                         />
                     )}
 
-                    {/* Faculty employeeId is no longer needed during signup as they are matched by email */}
+                    {form.role === "faculty" && (
+                        <input
+                            name="employeeId"
+                            placeholder="Employee ID"
+                            value={form.employeeId}
+                            onChange={handleChange}
+                            required
+                            className="w-full rounded-lg border px-4 py-3"
+                        />
+                    )}
 
                     <button
                         disabled={loading}
                         className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                        {loading ? "Creating account..." : "Create Account"}
+                        {loading
+                            ? "Creating account..."
+                            : "Create Account"}
                     </button>
 
                 </form>
 
                 <p className="mt-6 text-center text-sm text-slate-500">
                     Already have an account?
+
                     <Link
                         to="/login"
                         className="ml-1 font-semibold text-blue-600"
